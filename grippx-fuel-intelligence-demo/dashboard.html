@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command Centre — GRIPPX Fuel Intelligence</title>
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  .dash-grid{ display:grid; grid-template-columns:1.5fr 1fr; gap:18px; margin-top:18px; }
+  @media (max-width:1180px){ .dash-grid{ grid-template-columns:1fr; } }
+  .map-wrap{ position:relative; }
+  #map{ width:100%; height:460px; border-radius:var(--radius); overflow:hidden; background:var(--ink); }
+  .map-legend{ display:flex; gap:16px; margin-top:10px; font-size:11.5px; color:var(--text-faint); flex-wrap:wrap; }
+  .map-legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .map-legend i{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+  @media (max-width:880px){ .two-col{ grid-template-columns:1fr; } }
+  .tf-grid{ display:grid; grid-template-columns:1fr; gap:14px; }
+
+  /* Leaflet theming to match the console */
+  .leaflet-container{ background:var(--ink); font-family:var(--font-body); }
+  .leaflet-control-attribution{ background:rgba(12,20,32,0.7) !important; color:var(--text-faint) !important; font-size:9.5px !important; }
+  .leaflet-control-attribution a{ color:var(--text-dim) !important; }
+  .leaflet-control-zoom a{
+    background:var(--panel) !important; color:var(--text) !important; border-color:var(--line-strong) !important;
+  }
+  .leaflet-control-zoom a:hover{ background:var(--panel-2) !important; }
+  .leaflet-tooltip{
+    background:var(--panel-3) !important; border:1px solid var(--line-strong) !important; color:var(--text) !important;
+    border-radius:8px !important; font-size:12px !important; box-shadow:0 8px 24px rgba(0,0,0,0.4) !important;
+  }
+  .leaflet-tooltip-top:before{ border-top-color:var(--panel-3) !important; }
+  .truck-pin{
+    display:block; width:12px; height:12px; border-radius:50%;
+    border:2px solid rgba(16,20,26,0.9); box-shadow:0 0 0 3px rgba(72,198,232,0.0), 0 0 8px rgba(0,0,0,0.5);
+  }
+  .depot-pin{
+    display:flex; align-items:center; justify-content:center;
+    width:30px; height:30px; border-radius:50%;
+    background:var(--ink); border:2px solid var(--cyan);
+    box-shadow:0 0 0 4px rgba(72,198,232,0.14);
+  }
+  .depot-pin-code{ font-family:var(--font-mono); font-size:9.5px; color:var(--text); }
+</style>
+</head>
+<body class="app-body">
+<div class="app-frame">
+
+  <aside class="app-sidebar">
+    <a href="index.html" class="brand"><span class="mark"></span><div>GRIPPX<br><small>FUEL INTELLIGENCE</small></div></a>
+    <div class="side-group-label">Operate</div>
+    <a href="dashboard.html" class="side-link active" data-nav="dashboard.html">Command Centre</a>
+    <a href="fleet.html" class="side-link" data-nav="fleet.html">Fleet &amp; Tankers</a>
+    <a href="depot.html" class="side-link" data-nav="depot.html">Depots &amp; Wetstock</a>
+    <div class="side-group-label">Configure</div>
+    <a href="integrations.html" class="side-link" data-nav="integrations.html">Integrations</a>
+    <a href="index.html#pilot" class="side-link">Pilot program</a>
+    <div class="sidebar-foot">GRIPPX FUEL INTELLIGENCE<br>Sandbox environment</div>
+  </aside>
+
+  <main class="app-main">
+    <div class="topbar">
+      <div>
+        <h1>Executive Command Centre</h1>
+        <div class="sub">Fleet-wide fuel intelligence · updated every 2s</div>
+      </div>
+      <div class="topbar-right">
+        <div id="role-switcher"></div>
+        <span class="pill"><span class="dot live"></span> Live</span>
+        <span class="clock js-clock mono"></span>
+      </div>
+    </div>
+
+    <div class="app-content">
+      <div id="kpi-grid" class="kpi-grid"></div>
+
+      <div class="dash-grid">
+        <div class="card map-wrap" data-restrict="exec,ops" data-restrict-label="Fleet-wide map requires Executive or Operations access. Depot Technicians view their assigned site on the Depots &amp; Wetstock page.">
+          <div class="panel-title">
+            <div><h3>Fleet map</h3><div class="eyebrow">Live GPS · real road corridors · click a truck or depot to open</div></div>
+            <span class="pill"><span class="dot live"></span> 12 tankers shown</span>
+          </div>
+          <div id="map"></div>
+          <div class="map-legend">
+            <span><i style="background:var(--amber)"></i> In transit</span>
+            <span><i style="background:var(--sage)"></i> Delivering</span>
+            <span><i style="background:var(--red)"></i> Elevated risk</span>
+            <span><i style="background:var(--cyan); border-radius:2px;"></i> Depot</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="panel-title">
+            <div><h3>Alerts</h3><div class="eyebrow">Theft, leaks, discrepancies &amp; maintenance</div></div>
+            <a href="fleet.html" class="btn btn-ghost btn-sm">View fleet →</a>
+          </div>
+          <div id="alerts-feed" class="scroll-panel"></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="panel-title">
+            <div><h3>Fuel loss reconciliation — fleet-wide, 24h</h3><div class="eyebrow">Expected vs. actual dispensed volume</div></div>
+          </div>
+          <div id="loss-bar"></div>
+        </div>
+        <div class="card">
+          <div class="panel-title">
+            <div><h3>Highest-risk vehicles</h3><div class="eyebrow" id="fleet-snapshot-scope">Ranked by AI risk score</div></div>
+            <a href="fleet.html" class="btn btn-ghost btn-sm">All vehicles →</a>
+          </div>
+          <div id="fleet-snapshot" class="scroll-panel"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <div class="panel-title">
+          <div><h3>Depot wetstock overview</h3><div class="eyebrow">Live automatic tank gauging · all sites</div></div>
+        </div>
+        <div id="tankfarm-mini" class="tf-grid"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
